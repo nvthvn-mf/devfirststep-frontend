@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+import axios from 'axios';
 
 /**
  * Service pour la gestion du token JWT dans le stockage local.
@@ -9,62 +9,39 @@ export const TokenStorage = {
     clear: () => localStorage.removeItem('jwtToken'),
 };
 
-/**
- * Classe utilitaire pour les appels HTTP vers l'API Spring Boot.
- */
-class ApiClient {
-    constructor(baseUrl) {
-        this.baseUrl = baseUrl;
+const api = axios.create({
+    baseURL: 'http://localhost:8080/api/v1/',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
+// INTERCEPTEUR DE REQUÊTE : Ajoute le token automatiquement
+api.interceptors.request.use((config) => {
+    const token = TokenStorage.get();
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+});
 
-    // Effectue une requête fetch avec gestion du token et des erreurs
-    async request(endpoint, options = {}) {
-        const token = TokenStorage.get();
-
-        const headers = {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        };
-
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
+// INTERCEPTEUR DE RÉPONSE : Gère les données et les erreurs globales
+api.interceptors.response.use(
+    (response) => {
+        // Axios place les données de la réponse dans l'objet .data
+        return response.data;
+    },
+    (error) => {
+        // Si le serveur répond 401 (Non autorisé / Token expiré)
+        if (error.response && error.response.status === 401) {
+            console.warn("Session expirée ou non autorisée");
+            TokenStorage.clear();
+            // On ne fait PAS de redirection ici pour laisser le Router Vue gérer la navigation proprement
         }
 
-        const url = `${this.baseUrl}/${endpoint}`;
-
-        try {
-            const response = await fetch(url, {
-                ...options,
-                headers,
-            });
-
-            // Si le statut est 204 No Content (ex: DELETE), ne pas essayer de lire le JSON
-            if (response.status === 204) {
-                return null;
-            }
-
-            const text = await response.text();
-            const data = text ? JSON.parse(text) : {};
-
-            if (!response.ok) {
-                // Lance une erreur avec le message du backend
-                const errorMessage = data.message || data.error || `Erreur ${response.status}: Requête échouée`;
-                throw new Error(errorMessage);
-            }
-
-            return data;
-        } catch (error) {
-            console.error("API Error:", error);
-            throw error;
-        }
+        // On renvoie l'erreur pour que les composants puissent la traiter (ex: afficher un message)
+        return Promise.reject(error);
     }
+);
 
-    // Fonctions de raccourci (GET, POST, PUT, DELETE)
-    get(endpoint) { return this.request(endpoint, { method: 'GET' }); }
-    post(endpoint, body) { return this.request(endpoint, { method: 'POST', body: JSON.stringify(body) }); }
-    put(endpoint, body) { return this.request(endpoint, { method: 'PUT', body: JSON.stringify(body) }); }
-    delete(endpoint) { return this.request(endpoint, { method: 'DELETE' }); }
-}
-
-// Exporte une instance du client API
-export const api = new ApiClient(API_BASE_URL);
+export default api;

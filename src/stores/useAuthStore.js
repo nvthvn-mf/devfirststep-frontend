@@ -10,7 +10,7 @@ export const useAuthStore = () => {
     const login = async (credentials) => {
         try {
             const data = await api.post('auth/authenticate', credentials);
-            localStorage.setItem('token', data.token);
+            localStorage.setItem('jwtToken', data.token);
             isAuthenticated.value = true;
             await loadProfile();
             return { success: true };
@@ -22,7 +22,7 @@ export const useAuthStore = () => {
     const register = async (userData) => {
         try {
             const data = await api.post('auth/register', userData);
-            localStorage.setItem('token', data.token);
+            localStorage.setItem('jwtToken', data.token);
             isAuthenticated.value = true;
             await loadProfile();
             return { success: true };
@@ -32,7 +32,7 @@ export const useAuthStore = () => {
     };
 
     const loadProfile = async () => {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('jwtToken');
         if (!token) {
             isLoading.value = false;
             isAuthenticated.value = false;
@@ -52,7 +52,7 @@ export const useAuthStore = () => {
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
+        localStorage.removeItem('jwtToken');
         currentUser.value = null;
         isAuthenticated.value = false;
         // On ne fait plus window.location ici, on laisse le router gérer
