@@ -1,9 +1,11 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useRouter } from 'vue-router';
 
 // Récupération des actions depuis le store global
 const { login } = useAuthStore();
+const router = useRouter();
 
 // État local du formulaire
 const form = reactive({ email: '', password: '' });
@@ -16,7 +18,10 @@ const handleSubmit = async () => {
 
   try {
     const result = await login(form);
-    if (!result.success) {
+    if (result.success) {
+      // Redirection vers la liste des projets après connexion réussie
+      router.push({ name: 'projects' });
+    } else {
       error.value = result.error || 'Erreur de connexion. Vérifiez vos identifiants.';
     }
   } catch (err) {
@@ -26,8 +31,9 @@ const handleSubmit = async () => {
   }
 };
 
-// Émet un événement pour informer App.vue de changer d'écran
-const emit = defineEmits(['switchView']);
+const goToRegister = () => {
+  router.push({ name: 'register' });
+};
 </script>
 
 <template>
@@ -51,7 +57,7 @@ const emit = defineEmits(['switchView']);
 
       <p class="text-center text-sm text-gray-600 mt-4">
         Pas encore de compte ?
-        <span class="text-indigo-600 font-semibold cursor-pointer hover:text-indigo-800" @click="$emit('switchView', 'register')">S'inscrire</span>
+        <span class="text-indigo-600 font-semibold cursor-pointer hover:text-indigo-800" @click="goToRegister">S'inscrire</span>
       </p>
     </form>
   </div>
