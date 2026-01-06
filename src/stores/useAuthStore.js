@@ -1,68 +1,71 @@
 import { ref, computed } from 'vue';
-import { api, TokenStorage } from '@/services/api';
+import api from '@/services/api';
 
-// État centralisé
 const currentUser = ref(null);
+const isAuthenticated = ref(false);
 const isLoading = ref(true);
 
-/**
- * Hook pour gérer l'état d'authentification et les actions associées.
- */
-export function useAuthStore() {
+export const useAuthStore = () => {
 
-    const isAuthenticated = computed(() => !!currentUser.value);
-
-    // Charge le profil si un token est présent
-    const loadProfile = async () => {
-        const token = TokenStorage.get();
-        if (token) {
-            try {
-                const userData = await api.get('user/profile');
-                currentUser.value = userData;
-            } catch (error) {
-                console.error("Token expiré ou invalide, déconnexion.", error);
-                handleLogout();
-            }
-        }
-        isLoading.value = false;
-    };
-
-    /** Gère l'inscription et la connexion */
-    const handleAuth = async (endpoint, credentials) => {
-        isLoading.value = true;
+    const login = async (credentials) => {
         try {
-            const response = await api.post(`auth/${endpoint}`, credentials);
-
-            if (response && response.token) {
-                TokenStorage.set(response.token);
-                await loadProfile();
-            }
+            const data = await api.post('auth/authenticate', credentials);
+            localStorage.setItem('token', data.token);
+            isAuthenticated.value = true;
+            await loadProfile();
             return { success: true };
         } catch (error) {
-            isLoading.value = false;
-            return { success: false, error: error.message };
+            return { success: false, error: error.response?.data?.message || "Erreur de connexion" };
         }
     };
 
-    /** Gère la déconnexion */
-    const handleLogout = () => {
-        TokenStorage.clear();
+    const register = async (userData) => {
+        try {
+            const data = await api.post('auth/register', userData);
+            localStorage.setItem('token', data.token);
+            isAuthenticated.value = true;
+            await loadProfile();
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.response?.data?.message || "Erreur d'inscription" };
+        }
+    };
+
+    const loadProfile = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            isLoading.value = false;
+            isAuthenticated.value = false;
+            return;
+        }
+
+        try {
+            const data = await api.get('users/me');
+            currentUser.value = data;
+            isAuthenticated.value = true;
+        } catch (error) {
+            console.error("Échec du chargement du profil", error);
+            logout();
+        } finally {
+            isLoading.value = false;
+        }
+    };
+
+    const logout = () => {
+        localStorage.removeItem('token');
         currentUser.value = null;
-        window.location.reload();
+        isAuthenticated.value = false;
+        // On ne fait plus window.location ici, on laisse le router gérer
     };
 
     return {
-        // État
         currentUser,
         isAuthenticated,
         isLoading,
-
-        // Actions
+        login,
+        register,
+        logout,
         loadProfile,
-        logout: handleLogout,
-        login: (creds) => handleAuth('login', creds),
-        // Le register n'envoie plus le champ skills
-        register: (creds) => handleAuth('register', creds),
-        api,
+        api
     };
-}
+};
