@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 
-// Imports des vues... (garder tes imports actuels)
+// Importation des vues (Pages)
 import LoginView from '@/views/auth/LoginView.vue';
 import RegisterView from '@/views/auth/RegisterView.vue';
 import ProjectListView from '@/views/projects/ProjectListView.vue';
@@ -20,10 +20,11 @@ const router = createRouter({
     ]
 });
 
+// FIX : Le garde devient ASYNC
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
 
-    // CORRECTION : Utilisation de .value
+    // 1. On attend impérativement que loadProfile soit fini avant de décider
     if (authStore.isLoading.value) {
         await authStore.loadProfile();
     }

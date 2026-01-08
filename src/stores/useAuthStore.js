@@ -1,21 +1,44 @@
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import api from '@/services/api';
+import router from "@/router/index.js";
 
+// État partagé unique
 const currentUser = ref(null);
 const isAuthenticated = ref(false);
 const isLoading = ref(true);
 
 export const useAuthStore = () => {
 
+    const loadProfile = async () => {
+        const token = localStorage.getItem('jwtToken');
+
+        if (!token) {
+            isAuthenticated.value = false;
+            isLoading.value = false;
+            return;
+        }
+
+        try {
+            // FIX : 'users/me' au lieu de 'user/me'
+            const data = await api.get('users/me');
+            currentUser.value = data;
+            isAuthenticated.value = true;
+        } catch (error) {
+            console.error("Session invalide ou expirée");
+            logout();
+        } finally {
+            isLoading.value = false;
+        }
+    };
+
     const login = async (credentials) => {
         try {
             const data = await api.post('auth/authenticate', credentials);
             localStorage.setItem('jwtToken', data.token);
-            isAuthenticated.value = true;
             await loadProfile();
             return { success: true };
         } catch (error) {
-            return { success: false, error: error.response?.data?.message || "Erreur de connexion" };
+            return { success: false, error: "Identifiants incorrects" };
         }
     };
 
@@ -23,31 +46,10 @@ export const useAuthStore = () => {
         try {
             const data = await api.post('auth/register', userData);
             localStorage.setItem('jwtToken', data.token);
-            isAuthenticated.value = true;
             await loadProfile();
             return { success: true };
         } catch (error) {
-            return { success: false, error: error.response?.data?.message || "Erreur d'inscription" };
-        }
-    };
-
-    const loadProfile = async () => {
-        const token = localStorage.getItem('jwtToken');
-        if (!token) {
-            isLoading.value = false;
-            isAuthenticated.value = false;
-            return;
-        }
-
-        try {
-            const data = await api.get('users/me');
-            currentUser.value = data;
-            isAuthenticated.value = true;
-        } catch (error) {
-            console.error("Échec du chargement du profil", error);
-            logout();
-        } finally {
-            isLoading.value = false;
+            return { success: false, error: "Erreur d'inscription" };
         }
     };
 
@@ -55,7 +57,8 @@ export const useAuthStore = () => {
         localStorage.removeItem('jwtToken');
         currentUser.value = null;
         isAuthenticated.value = false;
-        // On ne fait plus window.location ici, on laisse le router gérer
+        isLoading.value = false;
+        router.push({ name: 'login' });
     };
 
     return {

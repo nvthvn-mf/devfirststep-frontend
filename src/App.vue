@@ -1,31 +1,29 @@
 <script setup>
-import { onMounted } from 'vue';
-import { RouterView, useRoute } from 'vue-router';
+import { RouterView } from 'vue-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 import AppHeader from '@/components/layout/AppHeader.vue';
 
 const authStore = useAuthStore();
-const route = useRoute();
 
-onMounted(() => {
-  authStore.loadProfile();
-});
+// Note : On ne fait plus l'appel ici, c'est le Router qui va s'en charger
+// pour garantir que l'auth est vérifiée AVANT d'afficher la page.
 </script>
 
 <template>
-  <!-- Le Header ne s'affiche que si on n'est pas sur les pages de login/register -->
-  <!-- On vérifie via le nom de la route ou l'état d'auth -->
-  <div v-if="authStore.isLoading" class="flex items-center justify-center min-h-screen bg-gray-50">
-    <p class="text-xl font-semibold text-indigo-600">Chargement...</p>
+  <!-- FIX : Utilisation de .value pour accéder à la valeur réelle de la ref -->
+  <div v-if="authStore.isLoading.value" class="flex items-center justify-center min-h-screen bg-gray-50">
+    <div class="text-center">
+      <p class="text-xl font-semibold text-indigo-600 mb-2">Chargement...</p>
+      <p class="text-sm text-gray-500">Vérification de la session</p>
+    </div>
   </div>
 
   <div v-else class="flex flex-col min-h-screen bg-gray-50 font-sans">
 
-    <!-- Header affiché seulement si authentifié -->
-    <AppHeader v-if="authStore.isAuthenticated" />
+    <!-- FIX : .value ici aussi -->
+    <AppHeader v-if="authStore.isAuthenticated.value" />
 
     <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <!-- C'est ici que Vue Router injecte le composant de la page actuelle -->
       <RouterView />
     </main>
 
