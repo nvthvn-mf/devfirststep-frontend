@@ -33,7 +33,7 @@ export const useAuthStore = () => {
 
     const login = async (credentials) => {
         try {
-            const data = await api.post('auth/authenticate', credentials);
+            const data = await api.post('auth/login', credentials);
             localStorage.setItem('jwtToken', data.token);
             await loadProfile();
             return { success: true };
